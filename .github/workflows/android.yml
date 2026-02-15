@@ -23,7 +23,8 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
       with:
-        cache-disabled: true # Deshabilitamos el cache temporalmente por el error de servicio de GitHub
+        gradle-version: '8.7' # Forzamos versión estable para evitar Gradle 9
+        cache-disabled: true
 
     - name: Build with Gradle
       run: gradle assembleDebug

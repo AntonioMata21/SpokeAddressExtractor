@@ -60,8 +60,7 @@ dependencies {
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
-    // Usamos annotationProcessor en lugar de kapt temporalmente para máxima compatibilidad con Gradle 9
-    annotationProcessor("androidx.room:room-compiler:$roomVersion")
+    kapt("androidx.room:room-compiler:$roomVersion")
 
     // Coroutines for async processing
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
