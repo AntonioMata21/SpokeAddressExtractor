@@ -151,52 +151,80 @@ class ScreenCaptureService : Service() {
 
     private fun captureAndProcess() {
         serviceScope.launch {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(applicationContext, "Capturando pantalla...", Toast.LENGTH_SHORT).show()
+            }
+            
             try {
-                val image = imageReader?.acquireLatestImage()
+                // Intentamos obtener la imagen. A veces acquireLatestImage es null si la pantalla no ha cambiado.
+                // Reintentamos un par de veces con un pequeño delay.
+                var image = imageReader?.acquireLatestImage()
+                if (image == null) {
+                    delay(100)
+                    image = imageReader?.acquireLatestImage()
+                }
+
                 if (image != null) {
                     val bitmap = image.planes[0].let { plane ->
                         val buffer = plane.buffer
                         val pixelStride = plane.pixelStride
                         val rowStride = plane.rowStride
-                        val rowPadding = rowStride - pixelStride * image.width
+                        val width = image.width
+                        val height = image.height
                         
-                        // Create bitmap from buffer
+                        // Ajuste para rowPadding
+                        val rowPadding = rowStride - pixelStride * width
                         val bitmap = Bitmap.createBitmap(
-                            image.width + rowPadding / pixelStride,
-                            image.height,
+                            width + rowPadding / pixelStride,
+                            height,
                             Bitmap.Config.ARGB_8888
                         )
                         bitmap.copyPixelsFromBuffer(buffer)
-                        bitmap
+                        
+                        // Recortar si hubo padding
+                        if (rowPadding > 0) {
+                            Bitmap.createBitmap(bitmap, 0, 0, width, height)
+                        } else {
+                            bitmap
+                        }
                     }
                     
-                    // IMPORTANT: Close image immediately after copying data to release buffer
                     image.close()
-
-                    // Process with ML Kit
                     processImage(bitmap)
                 } else {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(applicationContext, "No image captured", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(applicationContext, "Error: No se pudo obtener imagen (pantalla estática?)", Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error capturing image", e)
+                Log.e(TAG, "Error en captura", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(applicationContext, "Error técnico: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
 
     private suspend fun processImage(bitmap: Bitmap) {
+        withContext(Dispatchers.Main) {
+            Toast.makeText(applicationContext, "Procesando OCR...", Toast.LENGTH_SHORT).show()
+        }
+        
         val inputImage = InputImage.fromBitmap(bitmap, 0)
         
         textRecognizer.process(inputImage)
             .addOnSuccessListener { visionText ->
                 val text = visionText.text
-                parseAndSaveAddress(text)
-                bitmap.recycle() // Recycle bitmap to free memory
+                if (text.isNotBlank()) {
+                    parseAndSaveAddress(text)
+                } else {
+                    Toast.makeText(applicationContext, "No se detectó texto en la pantalla", Toast.LENGTH_SHORT).show()
+                }
+                bitmap.recycle()
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "OCR failed", e)
+                Toast.makeText(applicationContext, "Error en OCR", Toast.LENGTH_SHORT).show()
                 bitmap.recycle()
             }
     }
