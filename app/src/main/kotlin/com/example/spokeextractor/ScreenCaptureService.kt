@@ -92,27 +92,30 @@ class ScreenCaptureService : Service() {
         overlayView = LayoutInflater.from(this).inflate(R.layout.layout_overlay, null)
 
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            180, // Ancho fijo en píxeles (aprox 64dp)
+            180, // Alto fijo en píxeles
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
                 WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSLUCENT
         )
 
         params.gravity = Gravity.CENTER_VERTICAL or Gravity.END
-        params.x = 0
-        params.y = 0
-
+        
         val btnCapture = overlayView?.findViewById<ImageButton>(R.id.btn_capture)
         btnCapture?.setOnClickListener {
-            Toast.makeText(this, "Botón pulsado - Iniciando captura", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "¡BOTÓN DETECTADO!", Toast.LENGTH_SHORT).show()
             captureAndProcess()
         }
         
-        windowManager?.addView(overlayView, params)
+        try {
+            windowManager?.addView(overlayView, params)
+            Toast.makeText(this, "Overlay dibujado en pantalla", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al añadir overlay", e)
+        }
     }
 
     private fun setupImageReader() {

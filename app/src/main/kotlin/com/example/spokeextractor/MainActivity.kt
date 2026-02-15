@@ -32,49 +32,31 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Simple UI created programmatically to avoid another layout file
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(32, 32, 32, 32)
-        }
-        
-        val title = TextView(this).apply {
-            text = "Spoke Address Extractor"
-            textSize = 24f
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 48)
-        }
-        
-        val btnStart = Button(this).apply {
-            text = "Start Service"
-            setOnClickListener {
-                checkPermissionsAndStart()
-            }
-        }
+        setContentView(R.layout.activity_main)
 
-        layout.addView(title)
-        layout.addView(btnStart)
-        setContentView(layout)
+        findViewById<Button>(R.id.btn_start_service).setOnClickListener {
+            checkPermissions()
+        }
 
         mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     }
 
-    private fun checkPermissionsAndStart() {
-        if (!Settings.canDrawOverlays(this)) {
-            val intent = Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName")
-            )
-            startActivityForResult(intent, 100)
-            Toast.makeText(this, "Please grant Overlay permission", Toast.LENGTH_LONG).show()
-        } else {
-            requestScreenCapture()
+    private fun checkPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName")
+                )
+                startActivityForResult(intent, 100)
+                Toast.makeText(this, "Please grant Overlay permission", Toast.LENGTH_LONG).show()
+                return
+            }
         }
+        startScreenCaptureRequest()
     }
 
-    private fun requestScreenCapture() {
+    private fun startScreenCaptureRequest() {
         screenCaptureLauncher.launch(mediaProjectionManager.createScreenCaptureIntent())
     }
 
