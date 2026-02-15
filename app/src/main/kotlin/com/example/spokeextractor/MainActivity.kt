@@ -85,10 +85,15 @@ class MainActivity : AppCompatActivity() {
             putExtra(ScreenCaptureService.EXTRA_RESULT_DATA, data)
         }
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+            Toast.makeText(this, "Servicio iniciado correctamente", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error al iniciar servicio: ${e.message}", Toast.LENGTH_LONG).show()
         }
         finish() // Close activity, service runs in background
     }

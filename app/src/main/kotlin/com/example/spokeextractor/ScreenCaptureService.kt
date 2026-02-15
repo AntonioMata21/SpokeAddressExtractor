@@ -98,28 +98,20 @@ class ScreenCaptureService : Service() {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
                 WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         )
 
-        params.gravity = Gravity.TOP or Gravity.START
+        params.gravity = Gravity.CENTER_VERTICAL or Gravity.END
         params.x = 0
-        params.y = 100
+        params.y = 0
 
         val btnCapture = overlayView?.findViewById<ImageButton>(R.id.btn_capture)
         btnCapture?.setOnClickListener {
+            Toast.makeText(this, "Botón pulsado - Iniciando captura", Toast.LENGTH_SHORT).show()
             captureAndProcess()
         }
         
-        // Setup drag listener (simplified)
-        overlayView?.setOnTouchListener(object : View.OnTouchListener {
-             // Basic drag implementation would go here
-             // For brevity, skipping full drag logic
-             override fun onTouch(v: View?, event: android.view.MotionEvent?): Boolean {
-                 return false
-             }
-        })
-
         windowManager?.addView(overlayView, params)
     }
 
@@ -150,21 +142,25 @@ class ScreenCaptureService : Service() {
     }
 
     private fun captureAndProcess() {
+        if (imageReader == null) {
+            Toast.makeText(this, "Error: ImageReader es nulo", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         serviceScope.launch {
-            withContext(Dispatchers.Main) {
-                Toast.makeText(applicationContext, "Capturando pantalla...", Toast.LENGTH_SHORT).show()
-            }
-            
             try {
-                // Intentamos obtener la imagen. A veces acquireLatestImage es null si la pantalla no ha cambiado.
-                // Reintentamos un par de veces con un pequeño delay.
                 var image = imageReader?.acquireLatestImage()
+                
                 if (image == null) {
-                    delay(100)
-                    image = imageReader?.acquireLatestImage()
+                    // Si no hay imagen nueva, intentamos con acquireNextImage que es más agresivo
+                    image = imageReader?.acquireNextImage()
                 }
 
                 if (image != null) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(applicationContext, "Imagen obtenida con éxito", Toast.LENGTH_SHORT).show()
+                    }
+                    
                     val bitmap = image.planes[0].let { plane ->
                         val buffer = plane.buffer
                         val pixelStride = plane.pixelStride
@@ -172,7 +168,6 @@ class ScreenCaptureService : Service() {
                         val width = image.width
                         val height = image.height
                         
-                        // Ajuste para rowPadding
                         val rowPadding = rowStride - pixelStride * width
                         val bitmap = Bitmap.createBitmap(
                             width + rowPadding / pixelStride,
@@ -181,7 +176,6 @@ class ScreenCaptureService : Service() {
                         )
                         bitmap.copyPixelsFromBuffer(buffer)
                         
-                        // Recortar si hubo padding
                         if (rowPadding > 0) {
                             Bitmap.createBitmap(bitmap, 0, 0, width, height)
                         } else {
@@ -193,13 +187,12 @@ class ScreenCaptureService : Service() {
                     processImage(bitmap)
                 } else {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(applicationContext, "Error: No se pudo obtener imagen (pantalla estática?)", Toast.LENGTH_LONG).show()
+                        Toast.makeText(applicationContext, "Error: No se pudo capturar el frame", Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error en captura", e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(applicationContext, "Error técnico: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(applicationContext, "Error en captura: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
