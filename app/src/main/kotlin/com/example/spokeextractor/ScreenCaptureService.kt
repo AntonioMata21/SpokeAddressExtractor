@@ -76,16 +76,18 @@ class ScreenCaptureService : Service() {
         if (intent?.action == ACTION_START) {
             resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
             resultData = intent.getParcelableExtra(EXTRA_RESULT_DATA)
-            
+
             if (resultCode != 0 && resultData != null) {
                 mediaProjection = mediaProjectionManager?.getMediaProjection(resultCode, resultData!!)
                 setupImageReader()
                 createVirtualDisplay()
+                Toast.makeText(this, "Captura de pantalla lista", Toast.LENGTH_SHORT).show()
             }
         } else if (intent?.action == ACTION_STOP) {
+            stopForeground(true)
             stopSelf()
         }
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     private fun setupOverlay() {
